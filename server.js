@@ -57,7 +57,7 @@ const server = net.createServer((socket) => {
   });
 });
 
-server.listen(PORT, () => {
+server.listen(PORT, '127.0.0.1', () => {
   console.log(`Echo server listening on port ${PORT}`);
   console.log(server.address());
 });

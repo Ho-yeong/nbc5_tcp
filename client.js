@@ -1,12 +1,5 @@
 import net from 'net';
-import {
-  HEADER_SIZE,
-  LENGTH_OFFSET,
-  LENGTH_SIZE,
-  HANDLER_ID_OFFSET,
-  HANDLER_ID_SIZE,
-  MAX_MESSAGE_LENGTH,
-} from './constants.js';
+import { HEADER_SIZE, LENGTH_OFFSET, HANDLER_ID_OFFSET, MAX_MESSAGE_LENGTH } from './constants.js';
 
 // 서버에 연결할 호스트와 포트
 const HOST = 'localhost';
