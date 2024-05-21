@@ -7,43 +7,61 @@ const PORT = 5555;
 
 const server = net.createServer((socket) => {
   console.log('Client connected');
+  let socketClosed = false;
 
   let buffer = Buffer.alloc(0);
 
   socket.on('data', (data) => {
-    buffer = Buffer.concat([buffer, data]);
+    try {
+      let buffer = Buffer.from(data);
 
-    while (buffer.length >= HEADER_SIZE) {
+      // 메시지 길이와 핸들러 ID 읽기
       const { length, handlerId } = readHeader(buffer);
 
+      // 메시지 길이 확인
       if (length > MAX_MESSAGE_LENGTH) {
         console.error(`Error: Message length ${length} exceeds maximum of ${MAX_MESSAGE_LENGTH}`);
-        socket.write('Error: Message too long');
-        socket.end();
-        break;
+        if (!socketClosed) {
+          socket.write('Error: Message too long');
+          socketClosed = true;
+          socket.end();
+        }
+        return;
       }
 
+      // 핸들러 ID 확인
       if (!handlers[handlerId]) {
         console.error(`Error: No handler found for ID ${handlerId}`);
-        socket.write(`Error: Invalid handler ID ${handlerId}`);
-        socket.end();
-        break;
+        if (!socketClosed) {
+          socket.write(`Error: Invalid handler ID ${handlerId}`);
+          socketClosed = true;
+          socket.end();
+        }
+        return;
       }
 
-      if (buffer.length >= HEADER_SIZE + length) {
-        const message = buffer.slice(HEADER_SIZE, HEADER_SIZE + length);
-        console.log(`Received from client (Handler ${handlerId}):`, message.toString());
+      // 메시지 추출
+      const message = buffer.slice(HEADER_SIZE, HEADER_SIZE + length);
+      console.log(`Received from client (Handler ${handlerId}):`, message.toString());
 
-        // 핸들러 호출
-        const handler = handlers[handlerId];
-        const response = handler(message);
-        const responsePacket = Buffer.concat([writeHeader(response.length, handlerId), response]);
+      // 핸들러 호출 및 응답 생성
+      const handler = handlers[handlerId];
+      const responseMessage = handler(message);
+
+      // 응답 메시지 생성 및 전송
+      const responsePacket = Buffer.concat([
+        writeHeader(responseMessage.length, handlerId),
+        responseMessage,
+      ]);
+      if (!socketClosed) {
         socket.write(responsePacket);
-
-        // 처리한 메시지를 버퍼에서 제거
-        buffer = buffer.slice(HEADER_SIZE + length);
-      } else {
-        break;
+      }
+    } catch (error) {
+      console.error('Error processing data:', error);
+      if (!socketClosed) {
+        socket.write('Error processing data');
+        socketClosed = true;
+        socket.end();
       }
     }
   });
